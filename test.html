@@ -252,14 +252,12 @@
 				dragState.addTotalX(1);
 			}
 			
-			var theta = (-dragState.getTotalX()) / 200;
-			var phi   = (3.14 / 2) + (+dragState.getTotalY()) / 200;
+			var theta = (3.14 / 2) + (-dragState.getTotalX()) / 200;
+			var phi   = (3.14 / 2) - (3.14 / 10) + (+dragState.getTotalY()) / 200;
 			var dist   = 5;
 			
 			mat4.lookAt([dist*Math.sin(phi)*Math.cos(theta),dist*Math.cos(phi),dist*Math.sin(phi)*Math.sin(theta)], [0,0,0], [0,1,0], mvMatrix);
 			
-            mat4.translate(mvMatrix, [ 0.0, -1.0, -5.0]);
-
             // console.log("shaders.progDemo.uColor=", shaders.progDemo.uColor);
             // gl.useProgram(shaders.);
             
@@ -279,7 +277,7 @@
             gl.useProgram(shaders.progDemo);
             
             
-            mat4.translate(mvMatrix, [-1.5,  0.0, -2.0]);
+            mat4.translate(mvMatrix, [-1.5,  0.0, -3.0]);
             
             gl.bindBuffer(gl.ARRAY_BUFFER, triangleVertexPositionBuffer);
             
@@ -332,7 +330,7 @@
 			canvas.mousedown (dragState.onStart);
 			canvas.mousemove (dragState.onMove);
 			canvas.mouseup   (dragState.onEnd);
-			canvas.mouseenter(function(event) { console.log(event); if (event.buttons == 0 && dragState.isDragging()) { dragState.onEnd(); isRolling = false; } });
+			canvas.mouseenter(function(event) { if (event.buttons == 0 && dragState.isDragging()) { dragState.onEnd(); isRolling = false; } });
 			// todo: better mouse tracking outside of canvas
 			// canvas.mouseleave(dragState.onEnd);
 			canvas.dblclick (function() { isRolling = !isRolling; });
@@ -342,7 +340,7 @@
     </script>
 </head>
 <body>
-    <canvas id="canvas" style="border:1px solid red" width="500" height="500">
+    <canvas id="canvas" style="border:1px solid red" width="1000" height="500">
     </canvas>
     
     <pre id="log" style="border:1px solid blue">
