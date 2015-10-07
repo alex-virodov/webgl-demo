@@ -185,13 +185,79 @@
             gl.uniformMatrix4fv(program.uPMatrix,  false, pMatrix);
             gl.uniformMatrix4fv(program.uMVMatrix, false, mvMatrix);
         }        
-        
+
+        var isRolling = true;
+		var dragState = (function() {
+
+			// track drag state
+			var isDragging = false;
+			var startX;
+			var startY;
+
+			// accumulate dragging amounts
+			var totalX = 0; 
+			var totalY = 0;
+			
+			// public interface
+			return {
+				onStart: function(event) {
+					isDragging = true;		
+					startX = event.pageX;
+					startY = event.pageY;
+				},
+				
+				onMove: function(event) {
+					if (isDragging) {
+						totalX += startX - event.pageX;
+						totalY += startY - event.pageY;
+						startX = event.pageX;
+						startY = event.pageY;
+					}
+				},
+				
+				onEnd: function() {
+					isDragging = false;
+				},
+				
+				getTotalX: function() {
+					return totalX;
+				},
+
+				getTotalY: function() {
+					return totalY;
+				},
+
+				addTotalX: function(val) {
+					totalX += val;
+				},
+
+				addTotalY: function(val) {
+					totalY += val;
+				},
+
+				isDragging: function() {
+					return isDragging;
+				}
+			}
+		})();
+		
         function drawScene() {
         
             gl.viewport(0, 0, gl.viewportWidth, gl.viewportHeight);
             gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
             mat4.perspective(45, gl.viewportWidth / gl.viewportHeight, 0.1, 100.0, pMatrix);
             mat4.identity(mvMatrix);
+			
+			if (!dragState.isDragging() && isRolling) {
+				dragState.addTotalX(1);
+			}
+			
+			var theta = (-dragState.getTotalX()) / 200;
+			var phi   = (3.14 / 2) + (+dragState.getTotalY()) / 200;
+			var dist   = 5;
+			
+			mat4.lookAt([dist*Math.sin(phi)*Math.cos(theta),dist*Math.cos(phi),dist*Math.sin(phi)*Math.sin(theta)], [0,0,0], [0,1,0], mvMatrix);
+			
             mat4.translate(mvMatrix, [ 0.0, -1.0, -5.0]);
 
             // console.log("shaders.progDemo.uColor=", shaders.progDemo.uColor);
@@ -233,6 +299,25 @@
             gl.drawArrays(gl.TRIANGLE_STRIP, 0, squareVertexPositionBuffer.numItems);
         }
    
+		// http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+		// shim layer with setTimeout fallback
+		window.requestAnimFrame = (function(){
+		  return  window.requestAnimationFrame       ||
+				  window.webkitRequestAnimationFrame ||
+				  window.mozRequestAnimationFrame    ||
+				  function( callback ){
+					window.setTimeout(callback, 1000 / 60);
+				  };
+		})();
+
+   
+		function tick() {
+			requestAnimFrame(tick);
+			drawScene();
+			// animate();
+		}
+		
+   
         $(document).ready(function() {
         
             var canvas = $("#canvas");
@@ -243,8 +328,16 @@
             
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
             gl.enable(gl.DEPTH_TEST);
+			
+			canvas.mousedown (dragState.onStart);
+			canvas.mousemove (dragState.onMove);
+			canvas.mouseup   (dragState.onEnd);
+			canvas.mouseenter(function(event) { console.log(event); if (event.buttons == 0 && dragState.isDragging()) { dragState.onEnd(); isRolling = false; } });
+			// todo: better mouse tracking outside of canvas
+			// canvas.mouseleave(dragState.onEnd);
+			canvas.dblclick (function() { isRolling = !isRolling; });
 
-            drawScene();
+            tick();
         });
     </script>
 </head>
