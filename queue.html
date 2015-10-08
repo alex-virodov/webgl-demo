@@ -1,0 +1,173 @@
+<html>
+
+<head>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type">
+    <meta content="utf-8" http-equiv="encoding">
+
+    <script language="javascript" src="jquery-1.11.3.js"></script>
+    <script language="javascript" src="jquery-ui-1.11.3.js"></script>
+	
+	<script language="javascript">
+		$(document).ready(function() {
+		
+			queue = (function(jqueue) {
+			
+				var queue = [];
+				var counter = 0; // for debug
+				
+				var widthQueue = parseInt(jqueue.css('width'));
+				var widthElem  = 100;
+				
+				var allowPopDuringAnimation = false;
+				var isPopAnimation = false;
+
+				// no support for insert positon at zero - just 1 and on
+				var insertPosition = 0;
+				
+				function recomputePosition()
+				{
+					for (var i in queue) {
+						var newPosition;
+						if (insertPosition > 0 && i >= insertPosition) {
+							newPosition = widthQueue - widthElem * ((+i) + 1 + 1);
+						} else {
+							newPosition = widthQueue - widthElem * ((+i) + 1);
+						}
+						
+						queue[i].positionChanged = /*true if*/(queue[i].position != newPosition);
+						queue[i].position = newPosition;
+						
+						// console.log("widthQueue=", widthQueue, " widthElem=", widthElem, " i=", i, " position=", queue[i].position, "typeof i", typeof i);
+					}
+				}
+				
+				// public interface
+				return {
+					push: function(name) {
+						if (name == undefined) {
+							name = counter++;
+						}
+						
+						var element = $("<div class='queueElement'>"+counter+"</div>");
+						queue.push(element);
+						recomputePosition();
+						
+						element.css("left", element.position);
+						jqueue.append(element);
+					},
+					
+					pop: function() {
+						if (!allowPopDuringAnimation && isPopAnimation) { return null; }
+					
+						var popped = queue.shift();
+						
+						if (popped) {
+							recomputePosition();
+							isPopAnimation = true;
+							popped.fadeOut(500, function() { popped.remove(); isPopAnimation = false; });
+							
+							$.each(queue, function() {
+								this.animate({left: this.position}, 500);
+							});
+						}
+					},
+					
+					setInsertPosition: function(pos) {
+						insertPosition = pos;
+						recomputePosition();
+						$.each(queue, function() {
+							if (this.positionChanged) {
+								this.stop(true, false);
+								this.animate({left: this.position}, 500);
+							}
+						});
+					},
+					
+					setInsertPositionFromOffset: function(offset) {
+						// console.log(jqueue.offset(), offset);
+						pos = Math.round(-1+(widthQueue - (offset.left - jqueue.offset().left)) / widthElem);
+						this.setInsertPosition(pos);
+					},
+					
+					insertAtInsertPosition: function(name) {
+						var element = $("<div class='queueElement'>"+name+"</div>");
+						queue.splice(insertPosition, 0, element);
+						insertPosition = 0;
+						recomputePosition();
+						
+						element.css("left", element.position);
+						jqueue.append(element);
+					}
+				};
+			})($('#queue'));
+			
+			queue.push();
+			queue.push();
+			queue.push();
+			queue.push();
+			queue.push();
+			queue.push();
+			queue.push();
+			
+			$('#btnPop').click(function() { queue.push(); queue.pop(); });
+
+			$('#source').draggable({ 
+				helper: "clone", 
+				// refreshPositions: true,
+				drag: function(event, ui) {
+					// console.log(ui.helper.myQueue);
+					if (ui.helper.myQueue) {
+						ui.helper.myQueue.setInsertPositionFromOffset(ui.offset);
+					}
+				},
+			});
+
+			$('#queue').droppable( {
+				over: function(event, ui) { 
+					ui.helper.myQueue = queue;
+				},
+				
+				out: function(event, ui) {
+					ui.helper.myQueue = undefined;
+					queue.setInsertPosition(0);
+				},
+				
+				drop: function(event, ui) {
+					queue.insertAtInsertPosition("test");
+				}
+			});
+			
+			
+			// setInterval(function() { queue.push(); queue.pop(); }, 600);
+			
+		});
+	
+	</script>
+	
+	<style>
+		#queue { 
+			border:1px solid red;
+			width: 600px;
+			height: 200px;
+			overflow: hidden;
+			position: relative;
+		}
+		
+		.queueElement {
+			border:1px solid blue;
+			display:inline-block;
+			width: 80px;
+			height: 80px;
+			position:absolute;
+			padding: 10px;
+		}
+	</style>
+</head>
+<body>
+	<div id="queue"></div>
+	<div id="source" class="queueElement" style="border:1px solid green; position:relative">custom</div>
+
+	<input type="button" id="btnPop" value="pop!">
+
+</body>
+</html>
