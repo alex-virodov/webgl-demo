@@ -6,6 +6,8 @@
 
     <script language="javascript" src="glMatrix-0.9.5.min.js"></script>
     <script language="javascript" src="jquery-1.11.3.js"></script>
+    <script language="javascript" src="jquery-ui-1.11.3.js"></script>
+    <script language="javascript" src="flowqueue.js"></script>
     
     <script language="javascript">
         "use strict";
@@ -323,8 +325,8 @@
             webglInitContext(canvas[0]);
             webglInitShaders();
             webglInitBuffers();
-            
             gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            
             gl.enable(gl.DEPTH_TEST);
 			
 			canvas.mousedown (dragState.onStart);
@@ -336,16 +338,60 @@
 			canvas.dblclick (function() { isRolling = !isRolling; });
 
             tick();
-        });
+			
+			queue = new FlowQueue($('#queue'), /*cssClass=*/'queueElement');
+			var redboxHtml   = "<img src='redbox64.png'/>";
+			var greenboxHtml = "<img src='greenbox64.png'/>";
+			var blueboxHtml  = "<img src='bluebox64.png'/>";
+			
+			var x = 0;
+			
+			for (var i = 0; i < 12; i++) {
+				queue.push(x++ % 2 ? redboxHtml : greenboxHtml); 
+			}
+			
+			function pushpop() {
+				if (queue.getLength() < 12) {
+					queue.push(x++ % 2 ? redboxHtml : greenboxHtml); 
+				}
+				queue.pop(); 
+			}			
+			
+			$('#source').html(blueboxHtml);
+			queue.makeDraggable($('#source'));
+
+			setInterval(pushpop, 2000);
+		});
     </script>
+	
+	<style>
+		#queue { 
+			border:1px solid red;
+			width: 600px;
+			height: 66px;
+			overflow: hidden;
+			position: relative;
+			display:inline-block;
+		}
+		
+		.queueElement {
+			// border:1px solid blue;
+			display:inline-block;
+			width: 64px;
+			height: 64px;
+			position:absolute;
+			// padding: 10px;
+		}
+	</style>
+	
 </head>
 <body>
     <canvas id="canvas" style="border:1px solid red" width="1000" height="500">
     </canvas>
-    
-    <pre id="log" style="border:1px solid blue">
-Log:
-    </div>
+    <br><br>
+	
+	<div id="source" class="queueElement" style="position:static; margin-right:30px">custom</div>
+	<div id="queue"></div>
     
 <script id="shader-fs" type="x-shader/x-fragment">
   precision mediump float;
