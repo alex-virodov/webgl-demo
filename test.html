@@ -343,7 +343,7 @@
             
 			// draw box
 			// console.log(mvMatrix);
-			var temp = mvMatrix.slice(0);
+			var temp = mat4.create(mvMatrix);
 			
             gl.useProgram(shaders.progLighting);
 			var normalMatrix = mat3.create();
@@ -444,7 +444,7 @@
 
             tick();
 			
-			queue = new FlowQueue($('#queue'), /*cssClass=*/'queueElement');
+			var queue = new FlowQueue($('#queue'), /*cssClass=*/'queueElement');
 			var redboxHtml   = "<img src='redbox64.png'/>";
 			var greenboxHtml = "<img src='greenbox64.png'/>";
 			var blueboxHtml  = "<img src='bluebox64.png'/>";
@@ -515,6 +515,19 @@
 	<div id="source" class="queueElement" style="position:static; margin-right:30px">custom</div>
 	<div id="queue"></div>
 
+	<pre>
+Instructions:
+
+Click-and-drag on 3D display to rotate
+Double-click to start/stop autorotation
+Drag the blue box to anywhere in the queue of red/green boxes
+
+Tested with: Firefox 41.0.1, Chrome 45.0.2454.101 m, IE 11
+
+Using libraries: <a href="https://jquery.org/">jquery</a>, <a href="https://jqueryui.com/">jquery ui</a>, and <a href="https://github.com/toji/gl-matrix">glMatrix</a>.
+
+(c) Alexandr Virodov. Code is distributed under <a href="LICENSE">MIT License</a>
+	</pre>
 
 
     
