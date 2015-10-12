@@ -110,6 +110,8 @@ function FlowQueue(jqueue, cssClass) {
 					this.animate({left: this.position}, 500);
 				});
 			}
+			
+			return popped;
 		},
 		
 		getLength : function() {

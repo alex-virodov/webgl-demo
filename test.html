@@ -24,6 +24,7 @@
         var triangleVertexPositionBuffer;
         var squareVertexPositionBuffer;
         var vboGrid;
+		var vboBox;
 
         function webglInitContext(canvas) {
             try {
@@ -116,12 +117,16 @@
         
             // Can do loop (todo), but this is more explicit
             shaders.fsUniformColor = webglGetShader("fsUniformColor", /*uniforms=*/["uColor"], /*attributes=*/[]);
+            shaders.fsLighting     = webglGetShader("fsLighting",     /*uniforms=*/["uColor", "uGlobLightPosition"], /*attributes=*/[]);
             shaders.vsGenPosition  = webglGetShader("vsGenPosition",  /*uniforms=*/["uMVMatrix", "uPMatrix"], /*attributes=*/["aVertexPosition"]);
             shaders.shader_fs      = webglGetShader("shader-fs", [], []);
             shaders.shader_vs      = webglGetShader("shader-vs",      /*uniforms=*/["uMVMatrix", "uPMatrix"], /*attributes=*/["aVertexPosition", "aVertexColor"]);
             
+			shaders.vsGenPositionNormal = webglGetShader("vsGenPositionNormal",  /*uniforms=*/["uMVMatrix", "uPMatrix", "uNMatrix"], /*attributes=*/["aVertexPosition", "aVertexNormal"]);
+			
             shaders.progUniformColor = webglMakeProgram(shaders.vsGenPosition, shaders.fsUniformColor);
             shaders.progDemo         = webglMakeProgram(shaders.shader_vs, shaders.shader_fs);
+            shaders.progLighting     = webglMakeProgram(shaders.vsGenPositionNormal, shaders.fsLighting);
         }
         
         function webglCreateBuffer(vertices, attrSizes)
@@ -171,7 +176,8 @@
                 -1.0, -1.0,  0.0, -1.0, -1.0,  0.0
             ];
             squareVertexPositionBuffer = webglCreateBuffer(vertices, attrSizes);
-            
+
+			// Generate a grid
             vertices = []
             for (var x = -10; x <= 10; x += 1) {
                 vertices.push(-10); vertices.push(  0); vertices.push(  x);
@@ -181,6 +187,61 @@
             }
             
             vboGrid = webglCreateBuffer(vertices, /*attrSizes=*/[3]);
+
+			// Box mesh (coloring via shaders): Position, Normal
+			// todo: fix orientation, for now ok since backface culling is disabled
+			//       or use indexes
+			vertices = [
+				  // Front face     
+				  -1.0, -1.0,  1.0, 0.0,  0.0,  1.0,
+				   1.0, -1.0,  1.0, 0.0,  0.0,  1.0,
+				   1.0,  1.0,  1.0, 0.0,  0.0,  1.0,
+				  -1.0, -1.0,  1.0, 0.0,  0.0,  1.0,
+				   1.0,  1.0,  1.0, 0.0,  0.0,  1.0,
+				  -1.0,  1.0,  1.0, 0.0,  0.0,  1.0,
+                                    
+				  // Back face      
+				  -1.0, -1.0, -1.0, 0.0,  0.0, -1.0,
+				  -1.0,  1.0, -1.0, 0.0,  0.0, -1.0,
+				   1.0,  1.0, -1.0, 0.0,  0.0, -1.0,
+				  -1.0, -1.0, -1.0, 0.0,  0.0, -1.0,
+				   1.0,  1.0, -1.0, 0.0,  0.0, -1.0,
+				   1.0, -1.0, -1.0, 0.0,  0.0, -1.0,
+                                    
+				  // Top face       
+				  -1.0,  1.0, -1.0, 0.0,  1.0,  0.0,
+				  -1.0,  1.0,  1.0, 0.0,  1.0,  0.0,
+				   1.0,  1.0,  1.0, 0.0,  1.0,  0.0,
+				  -1.0,  1.0, -1.0, 0.0,  1.0,  0.0,
+				   1.0,  1.0,  1.0, 0.0,  1.0,  0.0,
+				   1.0,  1.0, -1.0, 0.0,  1.0,  0.0,
+                                    
+				  // Bottom face    
+				  -1.0, -1.0, -1.0, 0.0, -1.0,  0.0,
+				   1.0, -1.0, -1.0, 0.0, -1.0,  0.0,
+				   1.0, -1.0,  1.0, 0.0, -1.0,  0.0,
+				  -1.0, -1.0, -1.0, 0.0, -1.0,  0.0,
+				   1.0, -1.0,  1.0, 0.0, -1.0,  0.0,
+				  -1.0, -1.0,  1.0, 0.0, -1.0,  0.0,
+                                    
+				  // Right face     
+				   1.0, -1.0, -1.0, 1.0,  0.0,  0.0,
+				   1.0,  1.0, -1.0, 1.0,  0.0,  0.0,
+				   1.0,  1.0,  1.0, 1.0,  0.0,  0.0,
+				   1.0, -1.0, -1.0, 1.0,  0.0,  0.0,
+				   1.0,  1.0,  1.0, 1.0,  0.0,  0.0,
+				   1.0, -1.0,  1.0, 1.0,  0.0,  0.0,
+                                    
+				  // Left face      
+				  -1.0, -1.0, -1.0, -1.0,  0.0,  0.0,
+				  -1.0, -1.0,  1.0, -1.0,  0.0,  0.0,
+				  -1.0,  1.0,  1.0, -1.0,  0.0,  0.0,
+				  -1.0, -1.0, -1.0, -1.0,  0.0,  0.0,
+				  -1.0,  1.0,  1.0, -1.0,  0.0,  0.0,
+				  -1.0,  1.0, -1.0, -1.0,  0.0,  0.0,
+				];			
+				
+            vboBox = webglCreateBuffer(vertices, /*attrSizes=*/[3, 3]);
         }
         
         function setMatrixUniforms(program) {
@@ -188,6 +249,12 @@
             gl.uniformMatrix4fv(program.uMVMatrix, false, mvMatrix);
         }        
 
+		var boxColor = { 
+			target:  [0.2, 0.5, 0.5], 
+			current: [0.2, 0.5, 0.5], 
+			interp:  1.0 
+		};
+		
         var isRolling = true;
 		var dragState = (function() {
 
@@ -265,7 +332,8 @@
             
             
             gl.useProgram(shaders.progUniformColor);
-            
+			
+			// draw grid
             gl.bindBuffer(gl.ARRAY_BUFFER, vboGrid);
             vboGrid.attachAttrib(shaders.progUniformColor.aVertexPosition, 0);
             gl.uniform4f(shaders.progUniformColor.uColor, 0.0, 1.0, 1.0, 1.0);
@@ -273,6 +341,43 @@
             setMatrixUniforms(shaders.progUniformColor);
             gl.drawArrays(gl.LINES, 0, vboGrid.numItems);
             
+			// draw box
+			// console.log(mvMatrix);
+			var temp = mvMatrix.slice(0);
+			
+            gl.useProgram(shaders.progLighting);
+			var normalMatrix = mat3.create();
+			// This will be needed for specular lighting (will need to do computation in camera
+			// space). For diffuse, which is camera-position-independent, can do it in global space
+			// mat4.toInverseMat3(mvMatrix, normalMatrix);
+			// mat3.transpose(normalMatrix);
+			mat3.identity(normalMatrix);
+            gl.uniformMatrix3fv(shaders.progLighting.uNMatrix,  false, normalMatrix);
+	
+			mat4.scale(mvMatrix, [0.5, 0.5, 0.5]);
+			mat4.translate(mvMatrix, [0.0, 1, 0.0]);
+			
+            gl.bindBuffer(gl.ARRAY_BUFFER, vboBox);
+            vboBox.attachAttrib(shaders.progLighting.aVertexPosition, 0);
+            vboBox.attachAttrib(shaders.progLighting.aVertexNormal,   1);
+
+            gl.uniform3f(shaders.progLighting.uColor, 
+				boxColor.current[0]*(1-boxColor.interp) + boxColor.target[0]*boxColor.interp, 
+				boxColor.current[1]*(1-boxColor.interp) + boxColor.target[1]*boxColor.interp, 
+				boxColor.current[2]*(1-boxColor.interp) + boxColor.target[2]*boxColor.interp);
+				
+			if (boxColor.interp < 1.0) {
+				boxColor.interp += 0.1;
+			} else {
+				boxColor.current = boxColor.target;
+			}
+				
+            gl.uniform3f(shaders.progLighting.uGlobLightPosition, -2.0, -2.0, -1.0);
+            
+            setMatrixUniforms(shaders.progLighting);
+            gl.drawArrays(gl.TRIANGLES, 0, vboBox.numItems);
+
+			mvMatrix = temp;
             
             
             
@@ -325,7 +430,7 @@
             webglInitContext(canvas[0]);
             webglInitShaders();
             webglInitBuffers();
-            gl.clearColor(0.0, 0.0, 0.0, 1.0);
+            gl.clearColor(0.2, 0.2, 0.2, 1.0);
             
             gl.enable(gl.DEPTH_TEST);
 			
@@ -354,7 +459,24 @@
 				if (queue.getLength() < 12) {
 					queue.push(x++ % 2 ? redboxHtml : greenboxHtml); 
 				}
-				queue.pop(); 
+				var box = queue.pop();
+				if (box) {
+					var text = box.html();
+					if (text.indexOf("red") >= 0) {
+						console.log("red");
+						boxColor.target = [1, 0, 0];
+						boxColor.interp = 0;
+					} else if (text.indexOf("green") >= 0) {
+						console.log("green");
+						boxColor.target = [0, 1, 0];
+						boxColor.interp = 0;
+					} else if (text.indexOf("blue") >= 0) {
+						console.log("blue");
+						boxColor.target = [0, 0, 1];
+						boxColor.interp = 0;
+					}
+					
+				}
 			}			
 			
 			$('#source').html(blueboxHtml);
@@ -366,7 +488,7 @@
 	
 	<style>
 		#queue { 
-			border:1px solid red;
+			border:1px solid black;
 			width: 600px;
 			height: 66px;
 			overflow: hidden;
@@ -386,12 +508,15 @@
 	
 </head>
 <body>
-    <canvas id="canvas" style="border:1px solid red" width="1000" height="500">
+    <canvas id="canvas" width="700" height="500">
     </canvas>
     <br><br>
 	
 	<div id="source" class="queueElement" style="position:static; margin-right:30px">custom</div>
 	<div id="queue"></div>
+
+
+
     
 <script id="shader-fs" type="x-shader/x-fragment">
   precision mediump float;
@@ -429,15 +554,57 @@
   }
 </script>
 
+<!-- Fragment shader: Diffuse lighting -->
+<script id="fsLighting" type="x-shader/x-fragment">
+  precision mediump float;
+
+  uniform vec3 uColor;
+  uniform vec3 uGlobLightPosition;
+
+  varying vec3 vNormal;
+  varying vec3 vGlobPosition;
+  
+  void main(void) {
+	
+	// compute direction vector from global position of this fragment to the light source
+	vec3 vLight = normalize(vGlobPosition - uGlobLightPosition);
+
+	// Use dot product as the angle (a.b = cos(theta))
+	gl_FragColor.xyz = uColor * (dot(vLight, vNormal) + 0.1);
+
+    // gl_FragColor.xyz = (0.5 * vNormal) + vec3(0.5, 0.5, 0.5);
+	gl_FragColor.w = 1.0;
+  }
+</script>
+
 <!-- Vertex shader: generic position transformation by projection/modelview matrices -->
 <script id="vsGenPosition" type="x-shader/x-vertex">
   attribute vec3 aVertexPosition;
 
   uniform mat4 uMVMatrix;
   uniform mat4 uPMatrix;
+
   
   void main(void) {
     gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+  }
+</script>
+
+<script id="vsGenPositionNormal" type="x-shader/x-vertex">
+  attribute vec3 aVertexPosition;
+  attribute vec3 aVertexNormal;
+
+  uniform mat4 uMVMatrix;
+  uniform mat4 uPMatrix;
+  uniform mat3 uNMatrix;
+
+  varying vec3 vNormal;
+  varying vec3 vGlobPosition;
+
+  void main(void) {
+    gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+    vNormal     = uNMatrix * aVertexNormal;
+	vGlobPosition = aVertexPosition;
   }
 </script>
    
